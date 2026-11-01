@@ -1,0 +1,40 @@
+import { attentionItems } from '../../src/core/activity'
+import { sampleContact } from '../file-fixtures'
+import { populatedWorkspace, TODAY } from '../fixtures'
+import { test, expect, goto, restoreViaUI, cancelDialog, saveDialog } from './helpers'
+
+test('activity centre reflects due items, recent changes and links to editable records', async ({ page }) => {
+  await goto(page)
+  await page.getByRole('button', { name: 'Activity centre: 0 items to review', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('A little breathing room')
+  await dialog.getByRole('tab', { name: 'Recent changes', exact: true }).click()
+  await expect(dialog).toContainText('Your everyday starts here')
+  await page.keyboard.press('Escape')
+  const data = populatedWorkspace()
+  const contact = sampleContact({ updatedAt: '2099-01-01T00:00:00Z' })
+  data.contacts.push(contact)
+  await restoreViaUI(page, data)
+  const count = attentionItems(data, TODAY).length
+  const bell = page.getByRole('button', { name: `Activity centre: ${count} items to review`, exact: true })
+  await expect(bell.locator('.notification-dot')).toBeVisible()
+  await bell.click()
+  await expect(dialog.locator('.activity-item')).toHaveCount(count)
+  await dialog.locator('.activity-item').filter({ hasText: 'Atlas plan' }).click()
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Atlas plan')
+  await cancelDialog(page)
+  await page.getByRole('button', { name: 'Mark complete: Atlas plan', exact: true }).click()
+  await page.getByRole('button', { name: `Activity centre: ${count - 1} items to review`, exact: true }).click()
+  await expect(dialog.locator('.activity-item').filter({ hasText: 'Atlas plan' })).toHaveCount(0)
+  await dialog.getByRole('tab', { name: 'Recent changes', exact: true }).click()
+  await expect(dialog.locator('.activity-item').first()).toContainText(contact.name)
+  await dialog.locator('.activity-item').filter({ hasText: contact.name }).click()
+  await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue(contact.name)
+  await dialog.getByLabel('Notes', { exact: true }).fill('Opened through activity centre')
+  await saveDialog(page, 'Save changes')
+  await page.reload()
+  await page.locator('.notification-button').click()
+  await dialog.getByRole('button', { name: 'Reminders', exact: true }).click()
+  await expect(page).toHaveURL(/\/reminders$/)
+  await expect(dialog).toHaveCount(0)
+})

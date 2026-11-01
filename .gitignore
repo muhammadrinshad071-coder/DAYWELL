@@ -1,0 +1,28 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# Node.js
+node_modules/
+
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Testing
+test-results/
+playwright-report/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Temporary files
+*.tmp
+*.log
